@@ -1,0 +1,1 @@
+./node_modules/.bin/truffle $1 $2

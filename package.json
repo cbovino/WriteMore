@@ -1,0 +1,25 @@
+{
+  "name": "arbnode",
+  "version": "1.0.0",
+  "description": "Bot for arbitrage",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "build": "tsc -w"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.3"
+  },
+  "dependencies": {
+    "@types/node": "14.0.4",
+    "axios": "^0.21.1",
+    "solc": "^0.8.2",
+    "truffle": "^5.2.4",
+    "web3": "^1.3.4"
+  }
+}
