@@ -3,7 +3,7 @@ pragma solidity >=0.4.22 <0.9.0;
 
 import {SafeMath as SafeMath} from "./SafeMath.sol";
 
-contract WriteMore   {
+contract WriteMore  {
     
 
     struct Commitment {
@@ -22,6 +22,7 @@ contract WriteMore   {
         uint _value
     );
 
+
     event committmentDetails(
         uint256 atStakeAmount,
         uint256 duration,
@@ -31,9 +32,13 @@ contract WriteMore   {
         uint256 returnAmount
     );
 
-    event updatedDetails(
-
+    event endOfCommitment(
+        uint256 returnAmount
     );
+
+    event userMissedDay(uint256 totalDaysMissesd, uint256 missedDays);
+    event userMadeDay(bool res);
+
 
     address payable creator;
     mapping(address => Commitment) committedUsers;
@@ -54,7 +59,7 @@ contract WriteMore   {
         // prevents overflow 
         uint256 duration = SafeMath.div((SafeMath.sub(lastDay, block.timestamp)), 86400);
 
-        assert(duration >= 1, "Didnt select enough days");
+        require(duration >= 1, "Didnt select enough days");
 
         uint256 defaultSubmitDate = block.timestamp;
         uint256 defaultDaysMissed = 0;
@@ -83,30 +88,42 @@ contract WriteMore   {
     }
 
 
-    function updateCommitment() public{
+    function updateCommitment() public {
         require(committedUsers[msg.sender].isValid, "No commitment for address");
+
+        // 6 hour buffer from last submit day
 
         uint256 dateDifference = SafeMath.sub(block.timestamp, committedUsers[msg.sender].latestSubmitDate);
 
-        // Needs to be greater than a day or else cant update the commitment
-        assert(dateDifference >  86400, "Cant Update Twice");
 
-        // if the currentSubmissionDate is a beyond a day from latestSubmission
+        require(dateDifference > 21600, "6 Hour buffer between next submission");
+        
         if(dateDifference >  86400){
             //calulate the difference between the dates and increment daysMissed
 
             uint256 missedDays = SafeMath.div(dateDifference, 86400);
             committedUsers[msg.sender].daysMissed += missedDays; 
-            committedUsers[msg.sender].latestSubmitDate = currentSubmissionDate;
+            committedUsers[msg.sender].latestSubmitDate = block.timestamp;
+
+            emit userMissedDay(committedUsers[msg.sender].daysMissed, missedDays);
+        }
+
+
+        if(dateDifference < 86400){
+          committedUsers[msg.sender].latestSubmitDate = block.timestamp;
+          emit userMadeDay(true);        
         }
 
         // if the last day - currentSubmissionDate is less than a day in difference- we are on the lastday
-        uint256 lastDayCheck = SafeMath.sub(committedUsers[msg.sender].lastDay, currentSubmissionDate);
+        uint256 lastDayCheck = SafeMath.sub(committedUsers[msg.sender].lastDay, block.timestamp);
         if(lastDayCheck < 86400){
             // calculate return amount = Multiple (amount at stake per day by days missed)
-            uint256 returnAmount =SafeMath.mul((SafeMath.div(committedUsers[msg.sender].atStakeAmount,  committedUsers[msg.sender].duration), committedUsers[msg.sender].daysMissed));
+            uint256 returnAmount = SafeMath.mul((SafeMath.div(committedUsers[msg.sender].atStakeAmount,  committedUsers[msg.sender].duration)), committedUsers[msg.sender].daysMissed);
             committedUsers[msg.sender].returnAmount = returnAmount;
             committedUsers[msg.sender].returnReady = true; 
+
+            //emit user's Commitment is over
+            emit endOfCommitment(committedUsers[msg.sender].returnAmount);
         }
 
         
