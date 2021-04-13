@@ -63,10 +63,10 @@ describe('Write More', async function () {
     })
 
     it("Update a commitment - success - no missedDays ", async function () {
-        await this.myContract.initialCommit(this.updatedTime + 604800 , {from: user1, value: "20000000000000000"})
+        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
         await time.increase(86399)
-        const test2 = (await time.latest()).words[0]
         await this.myContract.updateCommitment({from: user1})
+        const test2 = (await time.latest()).words[0]
         const teste =  await this.myContract.returnCommitmentDetails({from: user1})
         //latest submit date worked
         expect(teste.receipt.logs[0].args.latestSubmitDate.words[0]).to.equal(test2)
@@ -89,12 +89,11 @@ describe('Write More', async function () {
 
     })
 
-    xit("Update a commitment - success - Last Days ", async function () {
-        const test = await time.latest()
-        await this.myContract.initialCommit(1618264142 , {from: user1, value: "20000000000000000"})
+    it("Update a commitment - success - Last Days ", async function () {
+        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
         await time.increase(86399)
-        const test2 = (await time.latest()).words[0]
         await this.myContract.updateCommitment({from: user1})
+        const test2 = (await time.latest()).words[0]
         const teste =  await this.myContract.returnCommitmentDetails({from: user1})
         //latest submit date worked
         expect(teste.receipt.logs[0].args.latestSubmitDate.words[0]).to.equal(test2)
@@ -106,10 +105,7 @@ describe('Write More', async function () {
 
     it("Update a commitment - error - 6hour buffer ", async function () {
 
-        const test = await time.latest()
-        await this.myContract.initialCommit(1618264142 , {from: user1, value: "20000000000000000"})
-        await time.increase(20000)
-        const test2 = (await time.latest()).words[0]
+        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
         await expectRevert(this.myContract.updateCommitment({from: user1}), "6 Hour buffer between next submission")
     })
 
