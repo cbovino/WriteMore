@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"resolveJsonModule\" : true}' mocha -r ts-node/register --timeout 10000 'test/*.ts'",
+    "test": "sh truffle.sh compile && sh truffle.sh test",
+    "compile": "sh truffle.sh compile",
+    "t": "sh truffle.sh test",
     "start": "node dist/index.js",
     "build": "tsc"
   },
@@ -19,6 +21,7 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.3.0",
     "mocha": "^8.3.2",
+    "solidity-coverage": "^0.7.16",
     "ts-node": "^9.1.1",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3"
