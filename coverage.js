@@ -1,4 +1,3 @@
-
 const { runCoverage } = require('@openzeppelin/test-environment');
 
 async function main () {

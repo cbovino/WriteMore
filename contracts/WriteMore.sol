@@ -7,19 +7,41 @@ contract WriteMore  {
     
 
     struct Commitment {
+        // Amount of eth at stake
         uint256 atStakeAmount;
+        // Amount of time 
         uint256 duration;
+        // lastDay is always at least 1 11:59 standardtime from the day of initial commitment
         uint256 lastDay;
+
+        // starts at 1 11:59 from day of initial commitment
+        uint256 nextDeadline;
+
+        // time in which a user most recently submitted their work
         uint256 latestSubmitDate;
+
+        // counter for days missed
         uint256 daysMissed;
+
+        // value in what will be returned
         uint256 returnAmount;
+        
+        // If the contract is valid at an anddress
         bool isValid;
+
+        //Can the user recieve their atstake amount, pay their payoutAccount or refresh 
         bool returnReady;
+
+        //Address to whom the user agrees the money can go to if they dont complete the task
+        // address payoutAccount;
+
     }
+
 
     event committed(
         address indexed _from,
-        uint _value
+        uint _value,
+        uint _days
     );
 
 
@@ -27,6 +49,7 @@ contract WriteMore  {
         uint256 atStakeAmount,
         uint256 duration,
         uint256 lastDay,
+        uint256 deadline,
         uint256 latestSubmitDate,
         uint256 daysMissed,
         uint256 returnAmount
@@ -48,18 +71,39 @@ contract WriteMore  {
         creator = msg.sender;
     }
 
-    function initialCommit(uint256 lastDay) public payable {
+
+    // Lastday refers to endingTime: duration is all days up until that given last dayTime
+    function initialCommit(uint256 lastDay, uint256 firstDeadline, address payoutAccount) public payable {
+
+        // firstDeadline must be est exactly at 11:59:00 pm
+        // lastDay -firstDeadline cant be less than a day
+        // lastDay and firstDeadline can be on same day
+        //firstDeadline cant be before block.timestamp
 
 
-        //need to require a value
+
         require(!committedUsers[msg.sender].isValid && !committedUsers[msg.sender].returnReady, "Already has a commitment");
         require(msg.value > 0.01 ether && msg.value < 0.1 ether, "Sent too much or too little at stake");
 
 
-        // prevents overflow 
-        uint256 duration = SafeMath.div((SafeMath.sub(lastDay, block.timestamp)), 86400);
 
-        require(duration >= 1, "Didnt select enough days");
+        uint256 difference = SafeMath.sub(lastDay, block.timestamp);
+
+        require(difference > 86400, "Didnt select enough days subtraction");
+
+        uint256 duration = SafeMath.div(difference, 86400);
+
+        require(duration >= 1, "Didnt select enough days division");
+
+
+        uint256 deadline;
+
+        if(duration == 1){
+            deadline = lastDay;
+        } else {
+            // calculate next 11:59pm  (not including today)
+            deadline = 50;
+        }
 
         uint256 defaultSubmitDate = block.timestamp;
         uint256 defaultDaysMissed = 0;
@@ -68,10 +112,10 @@ contract WriteMore  {
         bool returnReady = false;
 
 
-        committedUsers[msg.sender] = Commitment(msg.value, duration, lastDay, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady);
+        committedUsers[msg.sender] = Commitment(msg.value, duration, lastDay, deadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady);
         
         // emit the event
-        emit committed(msg.sender, msg.value);
+        emit committed(msg.sender, msg.value, duration);
     }
   
 
@@ -82,6 +126,7 @@ contract WriteMore  {
         emit committmentDetails(committedUsers[msg.sender].atStakeAmount, 
         committedUsers[msg.sender].duration,
         committedUsers[msg.sender].lastDay, 
+        committedUsers[msg.sender].nextDeadline, 
         committedUsers[msg.sender].latestSubmitDate,
         committedUsers[msg.sender].daysMissed,
         committedUsers[msg.sender].returnAmount);
@@ -90,16 +135,16 @@ contract WriteMore  {
 
     function updateCommitment() public {
         require(committedUsers[msg.sender].isValid, "No commitment for address");
+        require(committedUsers[msg.sender].lastDay > block.timestamp, "Cant update after lastDay, please retrieve or renew");
+        require(block.timestamp > committedUsers[msg.sender].latestSubmitDate, "Can only update commitment at a time that occurs after latestSubmitDate");
 
-        // 6 hour buffer from last submit day
+        //require latestSubmitDate to not be within 24hours from deadline
 
         uint256 dateDifference = SafeMath.sub(block.timestamp, committedUsers[msg.sender].latestSubmitDate);
 
-
-        require(dateDifference > 21600, "6 Hour buffer between next submission");
-        
+        // Change this to after deadline
         if(dateDifference >  86400){
-            //calulate the difference between the dates and increment daysMissed
+            //calulate the difference between the deadline and increment daysMissed
 
             uint256 missedDays = SafeMath.div(dateDifference, 86400);
             committedUsers[msg.sender].daysMissed += missedDays; 
@@ -108,13 +153,13 @@ contract WriteMore  {
             emit userMissedDay(committedUsers[msg.sender].daysMissed, missedDays);
         }
 
-
+        // change this to before the deadline
         if(dateDifference < 86400){
           committedUsers[msg.sender].latestSubmitDate = block.timestamp;
           emit userMadeDay(true);        
         }
 
-        // if the last day - currentSubmissionDate is less than a day in difference- we are on the lastday
+        // if the deadline and the lastDay are aligned, we are on the lastDay
         uint256 lastDayCheck = SafeMath.sub(committedUsers[msg.sender].lastDay, block.timestamp);
         if(lastDayCheck < 86400){
             // calculate return amount = Multiple (amount at stake per day by days missed)
@@ -126,8 +171,12 @@ contract WriteMore  {
             emit endOfCommitment(committedUsers[msg.sender].returnAmount);
         }
 
+        // else update deadline to the next midnight
+
         
     }
+
+
 
     function getBalance() public view returns (uint256) {
         require(msg.sender == creator, "Not the creator");

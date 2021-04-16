@@ -6,8 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "test": "sh truffle.sh compile && sh truffle.sh test",
-    "compile": "sh truffle.sh compile",
-    "t": "sh truffle.sh test",
+    "test-coverage": "node coverage.js",
     "start": "node dist/index.js",
     "build": "tsc"
   },
