@@ -1,3 +1,4 @@
+
 const { accounts, contract } = require('@openzeppelin/test-environment');
 const {
     BN,           // Big Number support
@@ -6,7 +7,7 @@ const {
     expectRevert, // Assertions for transactions that should fail
     time
   } = require('@openzeppelin/test-helpers');
-const [ owner, user1] = accounts;
+const [ owner, user1, user2] = accounts;
 const { expect } = require('chai');
 
 
@@ -29,17 +30,6 @@ describe('Write More', async function () {
         this.myContract = await WriteMore.new({ from: owner });
       });
 
-
-    // before(async function () {
-
-
-    // })
-
-    // async function resetTime (){
-       
-    // }
-
-
     it('Deployer can call balance', async function () {
         try{
 
@@ -52,82 +42,82 @@ describe('Write More', async function () {
  
     });
 
-    it("Add a user's Commitment- Success", async function (){
-        const submitUser = await this.myContract.initialCommit(this.updatedTime + 87400, {from: user1, value: "20000000000000000"})
-        expectEvent(submitUser, "committed", { _from: user1})        
+    it("InitialCommit- A user who didnt put anything at stake", async function(){
+       await expectRevert(this.myContract.initialCommit(this.updatedTime + 87400, this.updatedTime + 20000,  user2, {from: user1}), "Sent too much or too little at stake")
     })
 
-    it("Add a user's commitment - No gas revert", async function () {
-        await expectRevert(this.myContract.initialCommit(this.updatedTime + 87400 , {from: user1}), "Sent too much or too little at stake")
-    })
-
-    it("Add a user's commitment - Didnt select enough days", async function () {
-        await expectRevert(this.myContract.initialCommit(this.updatedTime, {from: user1,  value: "20000000000000000"}), "Didnt select enough days")
-    })
-
-
-    it("Add a user's commitment - Already has a commitment", async function () {
-        await this.myContract.initialCommit(this.updatedTime + 87400, {from: user1, value: "20000000000000000"}), 
-        await expectRevert(this.myContract.initialCommit(this.updatedTime + 87400, {from: user1}) ,"Already has a commitment")
-    })
-
-    it("Update a commitment - Can only update commitment at a time that occurs after latestSubmitDate", async function () {
-        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
-        await expectRevert(this.myContract.updateCommitment({from: user1}), "Can only update commitment at a time that occurs after latestSubmitDate")
-        // const test2 = (await time.latest()).words[0]
-        // const teste =  await this.myContract.returnCommitmentDetails({from: user1})
-        // //latest submit date worked
-        // expect(teste.receipt.logs[0].args.latestSubmitDate.words[0]).to.equal(test2)
-        // //no days have been missed
-        // expect(teste.receipt.logs[0].args.daysMissed.words[0]).to.equal(0)
+    it("InitialCommit- A user who didn’t select the firstDeadline that’s after the date of the current transaction", async function(){
+        await expectRevert(this.myContract.initialCommit(this.updatedTime + 87400, this.updatedTime - 100,  user2, {from: user1, value: "20000000000000000"}), "firstDeadline cant be before block.timestamp")
 
     })
 
-
-    it("Update a commitment- success- No missed days", async function (){
-        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
-        await time.increase(30000)
-        const time2 = (await time.latest()).words[0]
-        await this.myContract.updateCommitment({from: user1})
-        const teste =  await this.myContract.returnCommitmentDetails({from: user1})
-        //latest submit date worked
-        expect(teste.receipt.logs[0].args.latestSubmitDate.words[0]).to.equal(time2)
-        //no days have been missed
-        expect(teste.receipt.logs[0].args.daysMissed.words[0]).to.equal(0)
-    })
-
-    it("Update a commitment - success - Last Days ", async function () {
-
-        await this.myContract.initialCommit(this.updatedTime + 172800, {from: user1, value: "20000000000000000"})
-        await time.increase(86400)
-        const lastDay = await this.myContract.updateCommitment({from: user1});
- 
-    })
-
-    it("Update a commitment - success - 1 Missed Days ", async function () {
-        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
-
-        // Increase beyond a day but no more
-        await time.increase(96401)
-        const test2 = (await time.latest()).words[0]
-        await this.myContract.updateCommitment({from: user1})
-        const teste =  await this.myContract.returnCommitmentDetails({from: user1})
-        //latest submit date worked
-        expect(teste.receipt.logs[0].args.latestSubmitDate.words[0]).to.equal(test2)
-        //no days have been missed
-        expect(teste.receipt.logs[0].args.daysMissed.words[0]).to.equal(1)
+    it("InitialCommit- A user who didn’t select a cutOff and firstDeadline that’s exactly 24hrs from each other", async function(){
+        await expectRevert(this.myContract.initialCommit(this.updatedTime + 518400, this.updatedTime + 259201,  user2, {from: user1, value: "20000000000000000"}), "Requiring firstDeadline to be exactly 24hrs from cutoff")
 
     })
 
-
-    it("Update a commitment - error - 6hour buffer ", async function () {
-        await this.myContract.initialCommit(this.updatedTime + 604800, {from: user1, value: "20000000000000000"})
-        await time.increase(1000)
-        await expectRevert(this.myContract.updateCommitment({from: user1}), "6 Hour buffer between next submission")
+    it("InitialCommit- A user who didnt select a day between now and firstDeadline", async function(){
+        // await expectRevert(this.myContract.initialCommit(this.updatedTime + 87401, this.updatedTime + 100,  user2, {from: user1, value: "20000000000000000"}), "Must have a day between now and firstDeadline")
+        await expectRevert(this.myContract.initialCommit(this.updatedTime + 87400, this.updatedTime + 1000,  user2, {from: user1, value: "20000000000000000"}), "Must have a day between now and firstDeadline")
     })
 
-    it("Update a commitment - error - Bad Address ", async function () {
-        await expectRevert(this.myContract.updateCommitment({from: user1}), "No commitment for address")
+    it("InitialCommit- Success", async function(){
+        await this.myContract.initialCommit(this.updatedTime + 172801, this.updatedTime + 86401,  user2, {from: user1, value: "20000000000000000"})
+        const res = await this.myContract.returnCommitmentDetails({from: user1})
+        expect(res.receipt.logs[0].args.duration.words[0]).to.equal(2)
+        expectEvent(res, "committmentDetails")
+    })
+
+    it("InitialCommit- A user who already has a commitment", async function(){
+        await this.myContract.initialCommit(this.updatedTime + 172800, this.updatedTime + 86400,  user2, {from: user1, value: "20000000000000000"})
+
+        this.updateTime = (await time.latest()).toNumber()
+        await expectRevert(this.myContract.initialCommit(this.updatedTime + 172800, this.updatedTime + 86400, user2, {from: user1, value: "20000000000000000"}), "Already has a commitment")
+    })
+
+    it("updateCommitment- No commitment for address", async function (){
+        await expectRevert(this.myContract.updateCommitment({from: user1}), "No commitment for address");
+    })
+
+    it("updateCommitment- A user must submit only within 24Hrs from deadline", async function (){
+        await this.myContract.initialCommit(this.updatedTime + 259203, this.updatedTime + 172803,  user2, {from: user1, value: "20000000000000000"})
+        await expectRevert(this.myContract.updateCommitment({from: user1}), "User must submit only within 24Hrs from deadline")
+    })
+    it("updateCommitment- Happy path with no missed days", async function (){
+        await this.myContract.initialCommit(this.updatedTime + 259203, this.updatedTime + 172803,  user2, {from: user1, value: "20000000000000000"})
+        await expectRevert(this.myContract.updateCommitment({from: user1}), "User must submit only within 24Hrs from deadline")
+        this.updatedTime += 87400
+        await time.increaseTo(this.updatedTime)
+       const two = await this.myContract.updateCommitment({from: user1})
+        this.updatedTime += 86400
+        await time.increaseTo(this.updatedTime)
+        const final = await this.myContract.updateCommitment({from: user1})
+        expect(final.logs[0].args.returnAmount.toString()).to.equal("20000000000000000")
+
+    })
+
+    it("updateCommitment- Happy path with 1 missed days", async function (){
+        await this.myContract.initialCommit(this.updatedTime + 259203, this.updatedTime + 172803,  user2, {from: user1, value: "20000000000000000"})
+        this.updatedTime += 172904
+        await time.increaseTo(this.updatedTime)
+        const res = await this.myContract.updateCommitment({from: user1})
+        expect(res.logs[0].args.daysMissed.toString()).to.equal("1")
+        expectEvent(res, "endOfCommitment")
+
+    })
+    it("updateCommitment- Missed first 2 days out of 4 days", async function (){
+        console.log(`cutoff- ${this.updatedTime + 345601}, deadline ${this.updatedTime + 86401}, currentTime ${this.updatedTime}`)
+        await this.myContract.initialCommit(this.updatedTime + 345601, this.updatedTime + 86401,  user2, {from: user1, value: "20000000000000000"})
+        this.updatedTime += 172901
+        await time.increaseTo(this.updatedTime)
+        //expect to have missed first 2 days
+
+        const res = await this.myContract.updateCommitment({from: user1})
+        console.log(`cutoff- ${this.updatedTime + 345601}, deadline-${res.logs[0].args.nextDeadline.toString()} currentTime ${this.updatedTime}`)
+
+        await time.increaseTo(this.updatedTime)
+        const res2 = await this.myContract.updateCommitment({from: user1})
+        console.log(res2.logs[0].args)
     })
 
   });

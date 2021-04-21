@@ -11,8 +11,8 @@ contract WriteMore  {
         uint256 atStakeAmount;
         // Amount of time 
         uint256 duration;
-        // lastDay is always at least 1 11:59 standardtime from the day of initial commitment
-        uint256 lastDay;
+        // cutOff is always at least 1 11:59 standardtime from the day of initial commitment
+        uint256 cutOff;
 
         // starts at 1 11:59 from day of initial commitment
         uint256 nextDeadline;
@@ -33,7 +33,7 @@ contract WriteMore  {
         bool returnReady;
 
         //Address to whom the user agrees the money can go to if they dont complete the task
-        // address payoutAccount;
+        address payoutAccount;
 
     }
 
@@ -41,14 +41,14 @@ contract WriteMore  {
     event committed(
         address indexed _from,
         uint _value,
-        uint _days
+        uint _days,
+        uint time
     );
-
 
     event committmentDetails(
         uint256 atStakeAmount,
         uint256 duration,
-        uint256 lastDay,
+        uint256 cutOff,
         uint256 deadline,
         uint256 latestSubmitDate,
         uint256 daysMissed,
@@ -56,10 +56,11 @@ contract WriteMore  {
     );
 
     event endOfCommitment(
-        uint256 returnAmount
+        uint256 returnAmount,
+        uint256 daysMissed
     );
 
-    event userMissedDay(uint256 totalDaysMissesd, uint256 missedDays);
+    event userMissedDay(uint256 totalDaysMissesd, uint256 missedDays, uint256 nextDeadline);
     event userMadeDay(bool res);
 
 
@@ -71,40 +72,21 @@ contract WriteMore  {
         creator = msg.sender;
     }
 
-
-    // Lastday refers to endingTime: duration is all days up until that given last dayTime
-    function initialCommit(uint256 lastDay, uint256 firstDeadline, address payoutAccount) public payable {
-
-        // firstDeadline must be est exactly at 11:59:00 pm
-        // lastDay -firstDeadline cant be less than a day
-        // lastDay and firstDeadline can be on same day
-        //firstDeadline cant be before block.timestamp
-
-
-
+    // cutOff refers to endingTime: duration is all days up until that given last dayTime
+    function initialCommit(uint256 cutOff, uint256 firstDeadline, address payoutAccount) public payable {            
         require(!committedUsers[msg.sender].isValid && !committedUsers[msg.sender].returnReady, "Already has a commitment");
         require(msg.value > 0.01 ether && msg.value < 0.1 ether, "Sent too much or too little at stake");
+        require(firstDeadline > block.timestamp , "firstDeadline cant be before block.timestamp");
+        uint256 remainder = (SafeMath.sub(cutOff, firstDeadline)) % 86400;
+        require(remainder == 0, "Requiring firstDeadline to be exactly 24hrs from cutoff" );
+        uint256 differenceOne = SafeMath.sub(firstDeadline, block.timestamp);
 
 
+        require(differenceOne >= 86400, "Must have a day between now and firstDeadline");
+        // adding one to account for the time between now and firstDeadline
+        uint256 differenceTwo = SafeMath.sub(cutOff, firstDeadline);
 
-        uint256 difference = SafeMath.sub(lastDay, block.timestamp);
-
-        require(difference > 86400, "Didnt select enough days subtraction");
-
-        uint256 duration = SafeMath.div(difference, 86400);
-
-        require(duration >= 1, "Didnt select enough days division");
-
-
-        uint256 deadline;
-
-        if(duration == 1){
-            deadline = lastDay;
-        } else {
-            // calculate next 11:59pm  (not including today)
-            deadline = 50;
-        }
-
+        uint256 duration = (SafeMath.div(differenceTwo, 86400) + 1);
         uint256 defaultSubmitDate = block.timestamp;
         uint256 defaultDaysMissed = 0;
         uint256 defaultReturnAmount = 0;
@@ -112,71 +94,82 @@ contract WriteMore  {
         bool returnReady = false;
 
 
-        committedUsers[msg.sender] = Commitment(msg.value, duration, lastDay, deadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady);
+        committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount);
         
         // emit the event
-        emit committed(msg.sender, msg.value, duration);
+        emit committed(msg.sender, msg.value, duration, block.timestamp);
     }
   
-
     function returnCommitmentDetails() public {
         // require the person performing this call to be the person at this address
         require(committedUsers[msg.sender].isValid, "No commitment for address");
 
         emit committmentDetails(committedUsers[msg.sender].atStakeAmount, 
         committedUsers[msg.sender].duration,
-        committedUsers[msg.sender].lastDay, 
+        committedUsers[msg.sender].cutOff, 
         committedUsers[msg.sender].nextDeadline, 
         committedUsers[msg.sender].latestSubmitDate,
         committedUsers[msg.sender].daysMissed,
         committedUsers[msg.sender].returnAmount);
     }
 
-
     function updateCommitment() public {
         require(committedUsers[msg.sender].isValid, "No commitment for address");
-        require(committedUsers[msg.sender].lastDay > block.timestamp, "Cant update after lastDay, please retrieve or renew");
-        require(block.timestamp > committedUsers[msg.sender].latestSubmitDate, "Can only update commitment at a time that occurs after latestSubmitDate");
+        uint256 missedDays;
+        // If we know the user didnt miss a day
+        if(block.timestamp < committedUsers[msg.sender].nextDeadline ){
+          uint256 checkDoubleSubmit = SafeMath.sub(committedUsers[msg.sender].nextDeadline, block.timestamp);
+          require(checkDoubleSubmit < 86400, "User must submit only within 24Hrs from deadline");
+          committedUsers[msg.sender].latestSubmitDate = block.timestamp;
 
-        //require latestSubmitDate to not be within 24hours from deadline
-
-        uint256 dateDifference = SafeMath.sub(block.timestamp, committedUsers[msg.sender].latestSubmitDate);
-
-        // Change this to after deadline
-        if(dateDifference >  86400){
-            //calulate the difference between the deadline and increment daysMissed
-
-            uint256 missedDays = SafeMath.div(dateDifference, 86400);
+          if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
+                committedUsers[msg.sender].nextDeadline += 86400;
+                emit userMadeDay(true);
+                return;
+          }
+        }
+        // If we know that the user missed atleast a day
+        if(block.timestamp > committedUsers[msg.sender].nextDeadline){
+            uint256 dateDifference = SafeMath.sub(block.timestamp, committedUsers[msg.sender].nextDeadline);
+            if(dateDifference < 86400){
+                missedDays = 1;
+            } else {
+                missedDays = SafeMath.div(dateDifference, 86400) + 1;
+            }
             committedUsers[msg.sender].daysMissed += missedDays; 
             committedUsers[msg.sender].latestSubmitDate = block.timestamp;
 
-            emit userMissedDay(committedUsers[msg.sender].daysMissed, missedDays);
+            if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
+
+                committedUsers[msg.sender].nextDeadline +=  SafeMath.mul(86400, missedDays);
+
+                if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
+                        emit userMissedDay(committedUsers[msg.sender].daysMissed, missedDays, committedUsers[msg.sender].nextDeadline);
+                        return;
+                }
+            }            
         }
 
-        // change this to before the deadline
-        if(dateDifference < 86400){
-          committedUsers[msg.sender].latestSubmitDate = block.timestamp;
-          emit userMadeDay(true);        
-        }
-
-        // if the deadline and the lastDay are aligned, we are on the lastDay
-        uint256 lastDayCheck = SafeMath.sub(committedUsers[msg.sender].lastDay, block.timestamp);
-        if(lastDayCheck < 86400){
+            // If its the last day of the contract
+        if(committedUsers[msg.sender].cutOff == committedUsers[msg.sender].nextDeadline){
             // calculate return amount = Multiple (amount at stake per day by days missed)
+            require(!committedUsers[msg.sender].returnReady, "Cant update after cutOff, please retrieve or renew");
+
+            if(committedUsers[msg.sender].daysMissed == 0){
+                committedUsers[msg.sender].returnAmount = committedUsers[msg.sender].atStakeAmount;
+            } else {
             uint256 returnAmount = SafeMath.mul((SafeMath.div(committedUsers[msg.sender].atStakeAmount,  committedUsers[msg.sender].duration)), committedUsers[msg.sender].daysMissed);
             committedUsers[msg.sender].returnAmount = returnAmount;
+            }
+
             committedUsers[msg.sender].returnReady = true; 
 
             //emit user's Commitment is over
-            emit endOfCommitment(committedUsers[msg.sender].returnAmount);
+            emit endOfCommitment(committedUsers[msg.sender].returnAmount, committedUsers[msg.sender].daysMissed);
+            return;
         }
-
-        // else update deadline to the next midnight
-
-        
+   
     }
-
-
 
     function getBalance() public view returns (uint256) {
         require(msg.sender == creator, "Not the creator");
@@ -184,12 +177,10 @@ contract WriteMore  {
         return address(this).balance;
     }
 
-
     // Contract destructor
     function destroy() public  {
         require(msg.sender == creator, "Not the creator");
         selfdestruct(creator);
     }
-
 
 }

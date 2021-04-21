@@ -46,7 +46,7 @@ const jsonInterface = [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "lastDay",
+        "name": "cutOff",
         "type": "uint256"
       },
       {
@@ -76,7 +76,7 @@ const jsonInterface = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "lastDay",
+        "name": "cutOff",
         "type": "uint256"
       }
     ],
