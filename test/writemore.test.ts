@@ -106,18 +106,17 @@ describe('Write More', async function () {
 
     })
     it("updateCommitment- Missed first 2 days out of 4 days", async function (){
-        console.log(`cutoff- ${this.updatedTime + 345601}, deadline ${this.updatedTime + 86401}, currentTime ${this.updatedTime}`)
         await this.myContract.initialCommit(this.updatedTime + 345601, this.updatedTime + 86401,  user2, {from: user1, value: "20000000000000000"})
         this.updatedTime += 172901
+        // skip to 3rd deadline (missing first and second deadline)
         await time.increaseTo(this.updatedTime)
-        //expect to have missed first 2 days
-
         const res = await this.myContract.updateCommitment({from: user1})
-        console.log(`cutoff- ${this.updatedTime + 345601}, deadline-${res.logs[0].args.nextDeadline.toString()} currentTime ${this.updatedTime}`)
-
+        // skip to day of 4th deadline and submit ontime
+        this.updatedTime += 86400
         await time.increaseTo(this.updatedTime)
         const res2 = await this.myContract.updateCommitment({from: user1})
-        console.log(res2.logs[0].args)
+        expectEvent(res2, "endOfCommitment")
+        expect(res2.logs[0].args.daysMissed.toString()).to.equal("2")
     })
 
   });

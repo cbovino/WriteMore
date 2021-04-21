@@ -61,7 +61,7 @@ contract WriteMore  {
     );
 
     event userMissedDay(uint256 totalDaysMissesd, uint256 missedDays, uint256 nextDeadline);
-    event userMadeDay(bool res);
+    event userMadeDay(bool res, uint256 nextDeadline);
 
 
     address payable creator;
@@ -124,7 +124,7 @@ contract WriteMore  {
 
           if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
                 committedUsers[msg.sender].nextDeadline += 86400;
-                emit userMadeDay(true);
+                emit userMadeDay(true, committedUsers[msg.sender].nextDeadline);
                 return;
           }
         }
@@ -134,23 +134,25 @@ contract WriteMore  {
             if(dateDifference < 86400){
                 missedDays = 1;
             } else {
-                missedDays = SafeMath.div(dateDifference, 86400) + 1;
+                missedDays = SafeMath.div(dateDifference, 86400);
             }
             committedUsers[msg.sender].daysMissed += missedDays; 
-            committedUsers[msg.sender].latestSubmitDate = block.timestamp;
 
             if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
 
                 committedUsers[msg.sender].nextDeadline +=  SafeMath.mul(86400, missedDays);
-
+                
+                // If today would be considered the cutoff if deadline was in order
                 if(committedUsers[msg.sender].cutOff != committedUsers[msg.sender].nextDeadline){
+                        // Set next deadline to day after today
+                        committedUsers[msg.sender].nextDeadline += 86400;
                         emit userMissedDay(committedUsers[msg.sender].daysMissed, missedDays, committedUsers[msg.sender].nextDeadline);
                         return;
                 }
             }            
         }
 
-            // If its the last day of the contract
+        // If its the last day of the contract
         if(committedUsers[msg.sender].cutOff == committedUsers[msg.sender].nextDeadline){
             // calculate return amount = Multiple (amount at stake per day by days missed)
             require(!committedUsers[msg.sender].returnReady, "Cant update after cutOff, please retrieve or renew");
