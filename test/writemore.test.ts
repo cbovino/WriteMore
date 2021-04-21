@@ -5,8 +5,10 @@ const {
     constants,    // Common constants, like the zero address and largest integers
     expectEvent,  // Assertions for emitted events
     expectRevert, // Assertions for transactions that should fail
-    time
+    time,
+    balance
   } = require('@openzeppelin/test-helpers');
+
 const [ owner, user1, user2] = accounts;
 const { expect } = require('chai');
 
@@ -28,7 +30,7 @@ describe('Write More', async function () {
             this.updatedTime = (await time.latest()).toNumber()
         }
         this.myContract = await WriteMore.new({ from: owner });
-      });
+    });
 
     it('Deployer can call balance', async function () {
         try{

@@ -33,7 +33,8 @@ contract WriteMore  {
         bool returnReady;
 
         //Address to whom the user agrees the money can go to if they dont complete the task
-        address payoutAccount;
+        address payable payoutAccount;
+        address payable usersAddress;
 
     }
 
@@ -73,7 +74,7 @@ contract WriteMore  {
     }
 
     // cutOff refers to endingTime: duration is all days up until that given last dayTime
-    function initialCommit(uint256 cutOff, uint256 firstDeadline, address payoutAccount) public payable {            
+    function initialCommit(uint256 cutOff, uint256 firstDeadline, address payable payoutAccount) public payable {            
         require(!committedUsers[msg.sender].isValid && !committedUsers[msg.sender].returnReady, "Already has a commitment");
         require(msg.value > 0.01 ether && msg.value < 0.1 ether, "Sent too much or too little at stake");
         require(firstDeadline > block.timestamp , "firstDeadline cant be before block.timestamp");
@@ -94,7 +95,7 @@ contract WriteMore  {
         bool returnReady = false;
 
 
-        committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount);
+        committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount, msg.sender);
         
         // emit the event
         emit committed(msg.sender, msg.value, duration, block.timestamp);
@@ -179,6 +180,15 @@ contract WriteMore  {
         return address(this).balance;
     }
 
+    function resolveCommitment() public{        
+        require(committedUsers[msg.sender].returnReady, "Commitment isn't ready to be returned");
+        uint256 payout = SafeMath.sub(committedUsers[msg.sender].atStakeAmount , committedUsers[msg.sender].returnAmount);
+        if(payout > 0){
+            committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].returnAmount);
+        }
+        committedUsers[msg.sender].usersAddress.transfer(committedUsers[msg.sender].returnAmount);
+        committedUsers[msg.sender].returnReady = false;
+    }
     // Contract destructor
     function destroy() public  {
         require(msg.sender == creator, "Not the creator");
