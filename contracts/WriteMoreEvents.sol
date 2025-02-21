@@ -6,15 +6,14 @@ contract WriteMoreEvents {
 
     event committed(
         address indexed _from,
-        uint _value,
-        uint _days,
-        uint time
+        uint256 _to,
+        uint256 time
     );
 
     event sent(
         address indexed _from,
         address indexed _to,
-        uint _value
+        uint256 _value
     );
 
 }

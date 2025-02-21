@@ -13,12 +13,13 @@ contract WriteMoreStorage {
      * @param usersAddress User's address
      */
     struct Commitment {
+        bool isValid;
         uint256 atStakeAmount;
         uint256 startDate;
         uint256 lastDayBeforeMidnight;
         address payable payoutAccount;
-        string memory githubUsername;
-        uint16 index
+        string githubUsername;
+        uint256 index;
     }
     
     Commitment[] public allCommitments;

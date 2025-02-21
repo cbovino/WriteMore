@@ -21,16 +21,11 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
       return { creator, account1, account2, writeMore };
     }
 
-    async function createCommitment(commiter: SignerWithAddress, writeMore: WriteMore, cutOff: number, firstDeadline: number) {
-      await writeMore.connect(commiter).makeCommitment(cutOff, firstDeadline, { value: ethers.utils.parseEther("1") });
+    async function createValidCommitment(commiter: SignerWithAddress, payoutAccount: SignerWithAddress, writeMore: any) {
+      const lastDay = Math.floor(Date.now() / 1000) + 86400; // 1 day from now
+      await writeMore.connect(commiter).makeCommitment(lastDay, payoutAccount.address, "test", { value: hre.ethers.parseEther("0.02") });
     }
 
-    async function createValidCommitment(commiter: SignerWithAddress, writeMore: WriteMore) {
-        const cutOff = Math.floor(Date.now() / 1000) + 86400; // 1 day from now
-        const firstDeadline = Math.floor(Date.now() / 1000) + 86400; // 1 day from now
-        await createCommitment(commiter, writeMore, cutOff, firstDeadline);
-    }
-  
     describe("Deployment", function () {
   
       it("Should set the right creator", async function () {
@@ -41,10 +36,29 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
     describe("Commitment Creation", function () {
         it("Should create a valid commitment", async function () {
-            const { creator, writeMore } = await loadFixture(deployWriteMoreFixture);
-            await createValidCommitment(creator, writeMore);
-
+            const { creator, writeMore, account1 } = await loadFixture(deployWriteMoreFixture);
+            await createValidCommitment(creator, account1, writeMore);
+            expect((await writeMore.committedUsers(creator.address)).isValid).to.equal(true);
         });
+
+        it("Should not create a valid commitment if the user has already made a commitment", async function () {
+            const { creator, writeMore, account1 } = await loadFixture(deployWriteMoreFixture);
+            await createValidCommitment(creator, account1, writeMore);
+            expect(createValidCommitment(creator, account1, writeMore)).to.be.revertedWith("Already has a commitment");
+        });
+
+        it("Should not create a valid commitment lastDay cant be before block.timestamp", async function () {
+            const { creator, writeMore, account1, account2 } = await loadFixture(deployWriteMoreFixture);
+            const prevDay = Math.floor(Date.now() / 1000) - 86500; // 1 day ago
+            expect(writeMore.connect(account1).makeCommitment(prevDay, account2, "test", { value: hre.ethers.parseEther("0.02") })).to.be.revertedWith("lastDay cant be before block.timestamp");
+          });
+
+        it("Should not create a valid commitment if the user has not staked enough ETH", async function () {
+          const { creator, writeMore, account1, account2 } = await loadFixture(deployWriteMoreFixture);
+          const prevDay = Math.floor(Date.now() / 1000) + 86500; // 1 day ago
+          expect(writeMore.connect(account1).makeCommitment(prevDay, account2, "test", { value: hre.ethers.parseEther("0.01") })).to.be.revertedWith("Must stake at least $20 USD worth of ETH");
+        });
+
     });
   });
   

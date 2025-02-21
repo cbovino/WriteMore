@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@chainlink/contracts/src/v0.8/functions/FunctionsClient.sol";
-import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import "./WriteMoreStorage.sol";
 import "./WriteMoreEvents.sol";
 
@@ -32,7 +30,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents {
         
         bool valid = true;
 
-        committedUsers[msg.sender] = Commitment(msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
+        committedUsers[msg.sender] = Commitment(valid,msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
         allCommitments.push(committedUsers[msg.sender]);
         
         emit committed(msg.sender, msg.value, block.timestamp);
@@ -46,11 +44,11 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents {
      *      Marks the user's commitment as invalid after processing.
      */
     function returnCommitment() public {
-        bool isAtleastLastDay = (block.timestamp - committedUsers[msg.sender].lastDay) < 86400;
+        bool isAtleastLastDay = (block.timestamp - committedUsers[msg.sender].lastDayBeforeMidnight) < 86400;
         require(!isAtleastLastDay, "Not the end of the commitment");
         require(committedUsers[msg.sender].isValid, "Has a valid commitment");
         // check if user has missed a day through chainlink oracle
-        bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender));
+        bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender]);
 
         if(hasMissedDay){
             // if user has missed more than 1 day, send off the user
@@ -58,7 +56,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents {
             emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
         } else {
             // if user has not missed a day, return the user's commitment
-            msg.sender.transfer(committedUsers[msg.sender].atStakeAmount);
+            payable(msg.sender).transfer(committedUsers[msg.sender].atStakeAmount);
             emit sent(msg.sender, msg.sender, committedUsers[msg.sender].atStakeAmount);
         }
         committedUsers[msg.sender].isValid = false;
@@ -71,7 +69,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents {
      *      - Chainlink oracle is available
      *      - User has not already missed a day
      */
-    function checkIfUserHasMissedDay(Commitment commitment) public returns (bool) {
+    function checkIfUserHasMissedDay(Commitment memory commitment) public returns (bool) {
         // TODO: Implement the logic to check if the user has missed any days through the chainlink oracle
                 
         return false;
