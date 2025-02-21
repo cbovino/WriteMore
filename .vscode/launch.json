@@ -1,15 +1,25 @@
-
-{"configurations": [
-    {
-        "name": "run tests",
-        "type": "node",
-        "request": "launch",
-        "program": "${workspaceRoot}/node_modules/truffle/build/cli.bundled.js",
-        "args": ["test"],
-        "cwd": "${workspaceRoot}",
-        "outFiles": [
-            "${workspaceRoot}/test/*"
-        ],
-      }
-]
+{
+    "configurations": [
+        {
+            "name": "Hardhat Test",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["hardhat", "test", "--no-compile"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${workspaceRoot}",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "sourceMaps": true,
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/artifacts/**/*.js"
+            ]
+        }
+    ]
 }

@@ -1,66 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract WriteMore {
-    
+import "./WriteMoreStorage.sol";
+import "./WriteMoreEvents.sol";
+import "./WriteMoreRequirements.sol";
 
-    /**
-     * @notice Stores a user's commitment details
-     * @param atStakeAmount Amount of ETH staked by user
-     * @param duration Duration of commitment in days
-     * @param cutOff Final end date (11:59 PM of commitment end date)
-     * @param nextDeadline Next daily deadline (11:59 PM each day)
-     * @param latestSubmitDate Timestamp of user's most recent submission
-     * @param daysMissed Number of days user has missed their commitment
-     * @param returnAmount Amount to be returned to user
-     * @param isValid Whether commitment is currently valid
-     * @param returnReady Whether funds are ready to be distributed
-     * @param payoutAccount Address to receive funds if commitment fails
-     * @param usersAddress User's address
-     */
-    struct Commitment {
-        uint256 atStakeAmount;
-        uint256 duration;
-        uint256 cutOff;
-        uint256 nextDeadline;
-        uint256 latestSubmitDate;
-        uint256 daysMissed;
-        uint256 returnAmount;
-        bool isValid;
-        bool returnReady;
-        address payable payoutAccount;
-        address payable usersAddress;
-    }
-
-    event committed(
-        address indexed _from,
-        uint _value,
-        uint _days,
-        uint time
-    );
-
-    event committmentDetails(
-        uint256 atStakeAmount,
-        uint256 duration,
-        uint256 cutOff,
-        uint256 deadline,
-        uint256 latestSubmitDate,
-        uint256 daysMissed,
-        uint256 returnAmount
-    );
-
-    event endOfCommitment(
-        uint256 returnAmount,
-        uint256 daysMissed
-    );
-
-    event userMissedDay(uint256 totalDaysMissesd, uint256 missedDays, uint256 nextDeadline);
-    event userMadeDay(bool res, uint256 nextDeadline);
-
-
-    address public creator;
-    mapping(address => Commitment) committedUsers;
-
+contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreRequirements {
     constructor(){
         creator = msg.sender;
     }
@@ -78,15 +23,7 @@ contract WriteMore {
      *  - At least 1 day between contract creation and first deadline
      */
     function makeCommitment(uint256 cutOff, uint256 firstDeadline, address payable payoutAccount) public payable {            
-        require(!committedUsers[msg.sender].isValid && !committedUsers[msg.sender].returnReady, "Already has a commitment");
-        require(msg.value > 0.01 ether, "Must stake at least $20 USD worth of ETH");
-        require(firstDeadline > block.timestamp , "firstDeadline cant be before block.timestamp");
-
-        uint256 remainder = (cutOff - firstDeadline) % 86400;
-        require(remainder == 0, "Requiring firstDeadline to be exactly 24hrs from cutoff" );
-
-        uint256 differenceOne = firstDeadline - block.timestamp;
-        require(differenceOne >= 86400, "Must have a day between now and firstDeadline");
+        makeCommitmentRequirements(cutOff, firstDeadline);
         
         uint256 differenceTwo = cutOff - firstDeadline;
         uint256 duration = (differenceTwo / 86400) + 1;
@@ -99,35 +36,8 @@ contract WriteMore {
 
         committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount, payable(msg.sender));
         
-        // emit the event
         emit committed(msg.sender, msg.value, duration, block.timestamp);
     }
-
-        /**
-     * @notice Checks if a commitment is still valid and updates status if not
-     * @dev A commitment becomes invalid if:
-     *      - The cutoff date has passed
-     *      - The commitment is already marked as invalid
-     *      - The commitment is ready for return
-     * @return bool Returns true if commitment is still valid, false otherwise
-     */
-    function isCommitmentValid() private returns (bool) {
-        require(committedUsers[msg.sender].isValid || committedUsers[msg.sender].returnReady, "No commitment exists for this address");
-        
-        // If commitment is already invalid or ready for return, return false
-        if (!committedUsers[msg.sender].isValid || committedUsers[msg.sender].returnReady) {
-            return false;
-        }
-
-        // If cutoff date has passed, mark as invalid
-        if (block.timestamp > committedUsers[msg.sender].cutOff) {
-            committedUsers[msg.sender].isValid = false;
-            return false;
-        }
-
-        return true;
-    }
-  
     /**
      * @notice Returns the details of a user's commitment
      * @dev Emits a committmentDetails event containing:
@@ -142,7 +52,7 @@ contract WriteMore {
      */
     function returnCommitmentDetails() public {
         // require the person performing this call to be the person at this address
-        require(!isCommitmentValid(), "Invalid commitment or no commitment for address");
+        require(!isCommitmentValidRequirements(), "Invalid commitment or no commitment for address");
 
         emit committmentDetails(committedUsers[msg.sender].atStakeAmount, 
         committedUsers[msg.sender].duration,
@@ -219,7 +129,7 @@ contract WriteMore {
     }
 
     function updateCommitment() public {
-        require(!isCommitmentValid(), "Invalid commitment or no commitment for address");
+        require(!isCommitmentValidRequirements(), "Invalid commitment or no commitment for address");
         uint256 missedDays;
         // If we know the user didnt miss a day
         if(block.timestamp < committedUsers[msg.sender].nextDeadline ){
