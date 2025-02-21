@@ -36,7 +36,7 @@ contract WriteMoreRequirements is WriteMoreStorage {
      *      - The commitment is ready for return
      * @return bool Returns true if commitment is still valid, false otherwise
      */
-    function isCommitmentValidRequirements() private view returns (bool) {
+    function isCommitmentValidRequirements() internal returns (bool) {
         require(committedUsers[msg.sender].isValid || committedUsers[msg.sender].returnReady, "No commitment exists for this address");
         
         // If commitment is already invalid or ready for return, return false

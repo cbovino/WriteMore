@@ -2,9 +2,10 @@ import {
     time,
     loadFixture,
   } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-  import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-  import { expect } from "chai";
-  import hre from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { expect } from "chai";
+import hre from "hardhat";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
   
   describe("WriteMore", function () {
     // We define a fixture to reuse the same setup in every test.
@@ -19,6 +20,16 @@ import {
 
       return { creator, account1, account2, writeMore };
     }
+
+    async function createCommitment(commiter: SignerWithAddress, writeMore: WriteMore, cutOff: number, firstDeadline: number) {
+      await writeMore.connect(commiter).makeCommitment(cutOff, firstDeadline, { value: ethers.utils.parseEther("1") });
+    }
+
+    async function createValidCommitment(commiter: SignerWithAddress, writeMore: WriteMore) {
+        const cutOff = Math.floor(Date.now() / 1000) + 86400; // 1 day from now
+        const firstDeadline = Math.floor(Date.now() / 1000) + 86400; // 1 day from now
+        await createCommitment(commiter, writeMore, cutOff, firstDeadline);
+    }
   
     describe("Deployment", function () {
   
@@ -26,6 +37,14 @@ import {
         const { creator, writeMore } = await loadFixture(deployWriteMoreFixture);
         expect(await writeMore.creator()).to.equal(creator.address);
       });
+    });
+
+    describe("Commitment Creation", function () {
+        it("Should create a valid commitment", async function () {
+            const { creator, writeMore } = await loadFixture(deployWriteMoreFixture);
+            await createValidCommitment(creator, writeMore);
+
+        });
     });
   });
   
