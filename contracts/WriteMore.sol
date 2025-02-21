@@ -4,38 +4,33 @@ pragma solidity ^0.8.20;
 contract WriteMore {
     
 
+    /**
+     * @notice Stores a user's commitment details
+     * @param atStakeAmount Amount of ETH staked by user
+     * @param duration Duration of commitment in days
+     * @param cutOff Final end date (11:59 PM of commitment end date)
+     * @param nextDeadline Next daily deadline (11:59 PM each day)
+     * @param latestSubmitDate Timestamp of user's most recent submission
+     * @param daysMissed Number of days user has missed their commitment
+     * @param returnAmount Amount to be returned to user
+     * @param isValid Whether commitment is currently valid
+     * @param returnReady Whether funds are ready to be distributed
+     * @param payoutAccount Address to receive funds if commitment fails
+     * @param usersAddress User's address
+     */
     struct Commitment {
-        // Amount of eth at stake
         uint256 atStakeAmount;
-        // Amount of time 
         uint256 duration;
-        // cutOff is always at least 1 11:59 standardtime from the day of initial commitment
         uint256 cutOff;
-
-        // starts at 1 11:59 from day of initial commitment
         uint256 nextDeadline;
-
-        // time in which a user most recently submitted their work
         uint256 latestSubmitDate;
-
-        // counter for days missed
         uint256 daysMissed;
-
-        // value in what will be returned
         uint256 returnAmount;
-        
-        // If the contract is valid at an anddress
         bool isValid;
-
-        //Can the user recieve their atstake amount, pay their payoutAccount or refresh 
         bool returnReady;
-
-        //Address to whom the user agrees the money can go to if they dont complete the task
         address payable payoutAccount;
         address payable usersAddress;
-
     }
-
 
     event committed(
         address indexed _from,
@@ -65,7 +60,6 @@ contract WriteMore {
 
     address public creator;
     mapping(address => Commitment) committedUsers;
-
 
     constructor(){
         creator = msg.sender;
@@ -103,7 +97,7 @@ contract WriteMore {
         bool returnReady = false;
 
 
-        committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount, msg.sender);
+        committedUsers[msg.sender] = Commitment(msg.value, duration, cutOff, firstDeadline, defaultSubmitDate, defaultDaysMissed, defaultReturnAmount, valid, returnReady, payoutAccount, payable(msg.sender));
         
         // emit the event
         emit committed(msg.sender, msg.value, duration, block.timestamp);
@@ -117,7 +111,7 @@ contract WriteMore {
      *      - The commitment is ready for return
      * @return bool Returns true if commitment is still valid, false otherwise
      */
-    function isCommitmentValid() private view returns (bool) {
+    function isCommitmentValid() private returns (bool) {
         require(committedUsers[msg.sender].isValid || committedUsers[msg.sender].returnReady, "No commitment exists for this address");
         
         // If commitment is already invalid or ready for return, return false
@@ -223,8 +217,6 @@ contract WriteMore {
             //emit user's Commitment is over
         emit endOfCommitment(committedUsers[msg.sender].returnAmount, committedUsers[msg.sender].daysMissed);
     }
-
-
 
     function updateCommitment() public {
         require(!isCommitmentValid(), "Invalid commitment or no commitment for address");
