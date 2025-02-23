@@ -25,7 +25,5 @@ contract WriteMoreStorage {
     Commitment[] public allCommitments;
     mapping(address => Commitment) public committedUsers;
     address public creator;
-
-    string source = 
-    
+    bytes32 public donID;
 }
