@@ -3,11 +3,12 @@ pragma solidity ^0.8.20;
 
 import "./WriteMoreStorage.sol";
 import "./WriteMoreEvents.sol";
+import "./WriteMoreNFT.sol";
 import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 
-contract WriteMore is WriteMoreStorage, WriteMoreEvents, FunctionsClient {
+contract WriteMore is WriteMoreNFT, WriteMoreStorage, WriteMoreEvents, FunctionsClient {
     using FunctionsRequest for FunctionsRequest.Request;
 
     bytes32 public lastRequestId;
@@ -66,6 +67,8 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, FunctionsClient {
         } else {
             // if user has not missed a day, return the user's commitment
             payable(msg.sender).transfer(committedUsers[msg.sender].atStakeAmount);
+            // mint the user an NFT
+            mint(msg.sender);
             emit sent(msg.sender, msg.sender, committedUsers[msg.sender].atStakeAmount);
         }
         committedUsers[msg.sender].isValid = false;
@@ -108,7 +111,6 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, FunctionsClient {
         
         if (hasMissedDay) {
             committedUsers[user].isValid = false;
-            emit MissedDay(user);
         }
     }
 
