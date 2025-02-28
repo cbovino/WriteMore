@@ -24,6 +24,11 @@ contract WriteMoreStorage {
     
     Commitment[] public allCommitments;
     mapping(address => Commitment) public committedUsers;
+    
     address public creator;
-    bytes32 public donID;
+
+    uint64 public subscriptionId;
+    bytes32 public donID; // Decentralized Oracle Network ID
+    uint32 public gasLimit = 300000; // Gas for execution
+
 }
