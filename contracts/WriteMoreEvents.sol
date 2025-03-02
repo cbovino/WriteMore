@@ -16,4 +16,14 @@ contract WriteMoreEvents {
         uint256 _value
     );
 
+
+        // Event to log responses
+    event Response(
+        bytes32 indexed requestId,
+        string character,
+        bytes response,
+        bytes err
+    );
+
+
 }

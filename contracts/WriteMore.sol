@@ -7,9 +7,10 @@ import "./WriteMoreLink.sol";
 
 contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
 
-    constructor() {
+    constructor(address _router, bytes32 _donId, uint64 _subscriptionId) WriteMoreLink(_router) {
         creator = msg.sender;
         donID = _donId;
+        subscriptionId = _subscriptionId;
     }
 
     /**
@@ -33,7 +34,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
         
         bool valid = true;
 
-        committedUsers[msg.sender] = Commitment(valid,msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
+        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
         allCommitments.push(committedUsers[msg.sender]);
         
         emit committed(msg.sender, msg.value, block.timestamp);
