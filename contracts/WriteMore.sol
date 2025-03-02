@@ -3,20 +3,14 @@ pragma solidity ^0.8.20;
 
 import "./WriteMoreStorage.sol";
 import "./WriteMoreEvents.sol";
-import "./WriteMoreNFT.sol";
-import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
-import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
-import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
+import "./WriteMoreLink.sol";
 
-contract WriteMore is WriteMoreNFT, WriteMoreStorage, WriteMoreEvents, FunctionsClient {
-    using FunctionsRequest for FunctionsRequest.Request;
+contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
 
-    bytes32 public lastRequestId;
-    mapping(bytes32 => address) public requestToUser;
-    
-    constructor(address router, bytes32 _donId) FunctionsClient(router) {
+    constructor(address _router, bytes32 _donId, uint64 _subscriptionId) WriteMoreLink(_router) {
         creator = msg.sender;
         donID = _donId;
+        subscriptionId = _subscriptionId;
     }
 
     /**
@@ -40,7 +34,7 @@ contract WriteMore is WriteMoreNFT, WriteMoreStorage, WriteMoreEvents, Functions
         
         bool valid = true;
 
-        committedUsers[msg.sender] = Commitment(valid,msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
+        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
         allCommitments.push(committedUsers[msg.sender]);
         
         emit committed(msg.sender, msg.value, block.timestamp);
@@ -61,76 +55,15 @@ contract WriteMore is WriteMoreNFT, WriteMoreStorage, WriteMoreEvents, Functions
         bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender]);
 
         if(hasMissedDay){
-            // if user has missed more than 1 day, send off the user
+            // if user has missed more than 1 day, send off the user's eth
             committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
             emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
         } else {
             // if user has not missed a day, return the user's commitment
             payable(msg.sender).transfer(committedUsers[msg.sender].atStakeAmount);
-            // mint the user an NFT
-            mint(msg.sender);
             emit sent(msg.sender, msg.sender, committedUsers[msg.sender].atStakeAmount);
         }
         committedUsers[msg.sender].isValid = false;
     }
 
-    /**
-     * @notice Checks if the user has missed any days through the chainlink oracle
-     * @dev Requires:
-     *      - User has a valid commitment
-     *      - Chainlink oracle is available
-     *      - User has not already missed a day
-     */
-    function checkIfUserHasMissedDay(Commitment memory commitment) public {
-        FunctionsRequest.Request memory req;
-        req.initializeRequest(FunctionsRequest.Location.Remote, FunctionsRequest.CodeLanguage.JavaScript, donID);
-        
-        // Add the user's GitHub username as an arg
-        string[] memory args = new string[](3);
-        args[0] = commitment.githubUsername;
-        args[1] = uint256ToString(commitment.startDate);
-        args[2] = uint256ToString(commitment.lastDayBeforeMidnight);
-        req.setArgs(args);
-        
-        // Set the remote JavaScript source
-        string[] memory sources = new string[](1);
-        sources[0] = "https://raw.githubusercontent.com/YourRepo/WriteMore/main/chainlink/checkGithub.js";
-        req.setSourcesFromURLs(sources);
-        
-        bytes32 requestId = _sendRequest(req.encodeCBOR(), subscriptionId, gasLimit, donID);
-        requestToUser[requestId] = msg.sender;
-        lastRequestId = requestId;
-    }
-
-    /**
-     * @notice Callback function for Chainlink Functions response
-     */
-    function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-        address user = requestToUser[requestId];
-        bool hasMissedDay = abi.decode(response, (bool));
-        
-        if (hasMissedDay) {
-            committedUsers[user].isValid = false;
-        }
-    }
-
-    function uint256ToString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) return "0";
-        
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
-        }
-        
-        return string(buffer);
-    }
 }

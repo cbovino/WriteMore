@@ -1,38 +1,36 @@
-const axios = require("axios");
+const startTime = 86400000 * 5; // 10 days ago
+const username = "cbovino"; // GitHub username
+const since = Date.now() - startTime; // Timestamp for start time
 
-const username = "user"; // GitHub username
-const since = Date.now() - 86400000; // Timestamp 24 hours ago
+const url = `https://api.github.com/users/${username}/events/public`;
 
-async function hasRecentCommits(username) {
-    const username = "user"; // GitHub username
-    const since = Date.now() - 86400000; // 24 hours ago timestamp
-    
-    const url = `https://api.github.com/users/${username}/events/public`;
-    
-    const response = await Functions.makeHttpRequest({
-      url: url,
-      headers: { "User-Agent": "Chainlink-Functions" }
-    });
-    
-    if (!response.data || response.data.length === 0) {
-      return Functions.encodeUint256(0); // No events found
-    }
-    
-    // Check if there's a recent PushEvent (commit event)
-    for (const event of response.data) {
-      if (event.type === "PushEvent") {
-        const eventTimestamp = new Date(event.created_at).getTime();
-        if (eventTimestamp >= since) {
-          return Functions.encodeUint256(1); // Commit found
-        }
-      }
-    }
-    
-    return Functions.encodeUint256(0); // No recent commits found
-    
+const response = await Functions.makeHttpRequest({
+    url: url,
+    headers: { "User-Agent": "Chainlink-Functions" }
+});
+
+if (!response.data || response.data.length === 0) {
+    return Functions.encodeUint256(0); // No events found
 }
 
-// Call function
-hasRecentCommits(username).then((result) => {
-  console.log("Commit Check Result:", result);
-});
+const commitsByDay = new Set();
+
+// Process events to check for daily commits
+for (const event of response.data) {
+    if (event.type === "PushEvent") {
+        const eventDate = new Date(event.created_at);
+        const dayTimestamp = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();
+        commitsByDay.add(dayTimestamp);
+    }
+}
+
+// Check for missing days
+const currentDate = new Date();
+for (let time = since; time <= currentDate.getTime(); time += 86400000) {
+    const dayTimestamp = new Date(new Date(time).getFullYear(), new Date(time).getMonth(), new Date(time).getDate()).getTime();
+    if (!commitsByDay.has(dayTimestamp)) {
+        return Functions.encodeUint256(0); // Missing commit for a day
+    }
+}
+
+return Functions.encodeUint256(1); 
