@@ -34,7 +34,8 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
         
         bool valid = true;
 
-        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
+        // Mock data for a valid commitment:[true, 2, 1741036317, 1741122717, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4, "cbovino", 1]
+        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, "mockGithubUser", allCommitments.length);
         allCommitments.push(committedUsers[msg.sender]);
         
         emit committed(msg.sender, msg.value, block.timestamp);
