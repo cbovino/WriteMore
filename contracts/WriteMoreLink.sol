@@ -5,22 +5,24 @@ import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/l
 import {WriteMoreStorage} from "./WriteMoreStorage.sol";
 import {WriteMoreEvents} from "./WriteMoreEvents.sol";
 
+
 /**
  * @title WriteMoreLink
  * @notice This is a contract to make an HTTP requests using Chainlink
  */
-contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
+contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents{
     using FunctionsRequest for FunctionsRequest.Request;
 
     // Custom error type
     error UnexpectedRequestID(bytes32 requestId);
     /**
      * @notice Initializes the contract with the Chainlink router address and sets the contract owner
+     0xb83E47C2bC239B3bf370bc41e1459A34b41238D0
      */
     constructor(address _router) FunctionsClient(_router) {
     }
 
-    function checkIfUserHasMissedDay(Commitment memory _user) internal returns (bool) {
+    function checkIfUserHasMissedDay(Commitment memory _user) public returns (bool) {
         string[] memory args = new string[](2);
         args[0] = _user.githubUsername;
         args[1] = string(abi.encodePacked((_user.lastDayBeforeMidnight - _user.startDate) / 86400)); // 86400 seconds in a day
@@ -38,7 +40,9 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
     ) internal returns (bytes32 _requestId) {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source); // Initialize the request with JS code
-        if (_args.length > 0) req.setArgs(_args); // Set the arguments for the request
+        if (_args.length > 0) {
+            req.setArgs(_args);
+        }  // Set the arguments for the request
 
         // Send the request and store the request ID
         s_lastRequestId = _sendRequest(
@@ -72,5 +76,5 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
 
         // Emit an event to log the response
         emit Response(requestId, result, s_lastResponse, s_lastError);
-    }
+   }
 }

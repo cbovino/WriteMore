@@ -35,8 +35,8 @@ contract WriteMoreStorage {
     // subscription id for sepolia: 
 
     // Chainlink variables
-    uint64 public subscriptionId;
-    bytes32 public donID; // Decentralized Oracle Network ID
+    uint64 public subscriptionId = 4349;
+    bytes32 public donID = 0x66756e2d657468657265756d2d7365706f6c69612d3100000000000000000000 ;// Decentralized Oracle Network ID
     uint32 public gasLimit = 300000; // Gas for execution
 
     // State variables for Chainlink request
@@ -78,4 +78,14 @@ contract WriteMoreStorage {
     "    }"
     "}"
     "return Functions.encodeUint256(1);";
+
+    //   string source = "const ipfsUrl = args[0];"
+    //             "const response = await Functions.makeHttpRequest({ url: ipfsUrl, method: 'GET' });"
+    //             "if (response.error) { throw Error('Failed to fetch script from IPFS: ' + JSON.stringify(response.error)); }"
+    //             "const scriptCode = response.data;"
+    //             "const executeFunction = new Function(scriptCode);"
+    //             "const result = executeFunction();"
+    //             "return Functions.encodeString(result);";
+
+
 }
