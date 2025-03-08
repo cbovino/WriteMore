@@ -22,37 +22,33 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents{
     constructor(address _router) FunctionsClient(_router) {
     }
 
-    function checkIfUserHasMissedDay(Commitment memory _user) public returns (bool) {
-        string[] memory args = new string[](2);
+    function checkGithub(Commitment memory _user) internal {
+        string[] memory args = new string[](1);
         args[0] = _user.githubUsername;
-        args[1] = string(abi.encodePacked((_user.lastDayBeforeMidnight - _user.startDate) / 86400)); // 86400 seconds in a day
         sendRequest(args);
-        return true;
+        return;
     }
 
     /**
      * @notice Sends an HTTP request for character information
      * @param _args The arguments to pass to the HTTP request
-     * @return _requestId The ID of the request
      */
     function sendRequest(
         string[] memory _args
-    ) internal returns (bytes32 _requestId) {
+    ) internal {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source); // Initialize the request with JS code
         if (_args.length > 0) {
             req.setArgs(_args);
         }  // Set the arguments for the request
-
-        // Send the request and store the request ID
+        // Send the request and store the request ID to state
+        s_lastRequester = msg.sender;
         s_lastRequestId = _sendRequest(
             req.encodeCBOR(),
             subscriptionId,
             gasLimit,
             donID
         );
-
-        return s_lastRequestId;
     }
 
     /**
@@ -71,9 +67,18 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents{
         }
         // Update the contract's state variables with the response and any errors
         s_lastResponse = response;
-        result = string(response);
         s_lastError = err;
 
+        // if error, emit error and given user benefit of the doubt
+        result = string(response);
+
+        if(keccak256(abi.encodePacked(result)) == keccak256(abi.encodePacked("Commitment Complete"))){
+            // if user has committed today, reset the lastCheckedDate to the current timestamp
+            committedUsers[s_lastRequester].lastCheckedDate = block.timestamp;
+        } else if(keccak256(abi.encodePacked(result)) == keccak256(abi.encodePacked("Failed Response"))){
+            committedUsers[s_lastRequester].lastCheckedDate = block.timestamp;
+            emit Error(s_lastRequester, "Failed Response- User given benefit of the doubt", s_lastResponse, s_lastError);
+        }
         // Emit an event to log the response
         emit Response(requestId, result, s_lastResponse, s_lastError);
    }

@@ -34,11 +34,21 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
         
         bool valid = true;
 
-        // Mock data for a valid commitment:[true, 2, 1741036317, 1741122717, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4, "cbovino", 1]
-        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, lastDayBeforeMidnight, payoutAccount, "mockGithubUser", allCommitments.length);
+        // Mock data for a valid commitment:[true, 2, 1741036317, 1741036317, 1741122717, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4, "cbovino", 1]
+        committedUsers[msg.sender] = Commitment(valid, msg.value, block.timestamp, block.timestamp, lastDayBeforeMidnight, payoutAccount, githubUsername, allCommitments.length);
         allCommitments.push(committedUsers[msg.sender]);
         
         emit committed(msg.sender, msg.value, block.timestamp);
+    }
+
+    function checkCommitment() public {
+        require(committedUsers[msg.sender].isValid, "Has a valid commitment");
+        // check if user has missed a day
+        if(committedUsers[msg.sender].lastCheckedDate + 86400 < block.timestamp){
+            committedUsers[msg.sender].isValid = false;
+            return returnCommitment();
+        } 
+        checkGithub(committedUsers[msg.sender]);
     }
 
     /**
@@ -49,12 +59,14 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
      *      Marks the user's commitment as invalid after processing.
      */
     function returnCommitment() public {
-        bool isAtleastLastDay = (block.timestamp - committedUsers[msg.sender].lastDayBeforeMidnight) < 86400;
-        require(!isAtleastLastDay, "Not the end of the commitment");
-        require(committedUsers[msg.sender].isValid, "Has a valid commitment");
-        // check if user has missed a day through chainlink oracle
-        bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender]);
 
+
+
+
+
+
+        // check if user has missed a day or their commitment is over;
+        bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender]);
         if(hasMissedDay){
             // if user has missed more than 1 day, send off the user's eth
             committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
@@ -65,6 +77,10 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
             emit sent(msg.sender, msg.sender, committedUsers[msg.sender].atStakeAmount);
         }
         committedUsers[msg.sender].isValid = false;
+    }
+
+    function checkIfUserHasMissedDay(Commitment memory commitment) internal pure returns (bool) {
+        return true;
     }
 
 }

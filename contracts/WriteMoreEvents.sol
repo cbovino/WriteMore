@@ -25,5 +25,12 @@ contract WriteMoreEvents {
         bytes err
     );
 
+    event Error(
+        address indexed _from,
+        string _message,
+        bytes response,
+        bytes err
+    );
+
 
 }
