@@ -47,45 +47,22 @@ contract WriteMoreStorage {
     // Result of the Chainlink request
     string public result;
 
-    // Source code for the Chainlink function
-    string source ="const startTime = 86400000 * new Number(args[0]);"
-    "const username = args[1];"
-    "const since = Date.now() - startTime;"
-    "const url = 'https://api.github.com/users/' + username + '/events/public';"
-    "const response = await Functions.makeHttpRequest({"
-    "    url: url,"
-    "    headers: { 'User-Agent': 'Chainlink-Functions' }"
+    string source = "const d = args[0]"
+    "const apiResponse = await Functions.makeHttpRequest({"
+    "url: 'https://github-commit-checker-178230543349.us-east4.run.app',"
+    "method: 'POST',"
+    "headers: {"
+        "'Content-Type': 'application/json',"
+    "},"
+    "data: {"
+        "'days': args[0],"
+        "'username': args[1]"
+    "}"
     "});"
-
-    "if (!response.data || response.data.length === 0) {"
-    "    return Functions.encodeUint256(0);"
+    "if (apiResponse.error) {"
+    "return Functions.encodeString({'response': 'contact admin'});"
     "}"
-
-    "const commitsByDay = new Set();"
-    "for (const event of response.data) {"
-    "    if (event.type === 'PushEvent') {"
-    "        const eventDate = new Date(event.created_at);"
-    "        const dayTimestamp = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();"
-    "        commitsByDay.add(dayTimestamp);"
-    "    }"
-    "}"
-
-    "const currentDate = new Date();"
-    "for (let time = since; time <= currentDate.getTime(); time += 86400000) {"
-    "    const dayTimestamp = new Date(new Date(time).getFullYear(), new Date(time).getMonth(), new Date(time).getDate()).getTime();"
-    "    if (!commitsByDay.has(dayTimestamp)) {"
-    "        return Functions.encodeUint256(0);"
-    "    }"
-    "}"
-    "return Functions.encodeUint256(1);";
-
-    //   string source = "const ipfsUrl = args[0];"
-    //             "const response = await Functions.makeHttpRequest({ url: ipfsUrl, method: 'GET' });"
-    //             "if (response.error) { throw Error('Failed to fetch script from IPFS: ' + JSON.stringify(response.error)); }"
-    //             "const scriptCode = response.data;"
-    //             "const executeFunction = new Function(scriptCode);"
-    //             "const result = executeFunction();"
-    //             "return Functions.encodeString(result);";
+    "return Functions.encodeString(apiResponse.data);";
 
 
 }
