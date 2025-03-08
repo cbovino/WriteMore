@@ -44,13 +44,12 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
     function checkCommitment() public {
         require(committedUsers[msg.sender].isValid, "Has a valid commitment");
         // check if user has missed a day
-        if(committedUsers[msg.sender].lastCheckedDate + 86400 < block.timestamp){
+        if(checkIfUserHasMissedDay(committedUsers[msg.sender])){
             committedUsers[msg.sender].isValid = false;
             return returnCommitment();
         } 
         checkGithub(committedUsers[msg.sender]);
     }
-
     /**
      * @notice Returns the user's commitment based on the outcome of their commitment period
      * @dev Checks if the commitment period has ended and whether the user has missed any days.
@@ -59,28 +58,36 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
      *      Marks the user's commitment as invalid after processing.
      */
     function returnCommitment() public {
-
-
-
-
-
-
+        require(committedUsers[msg.sender].isValid, "Has a valid commitment");
+        require(block.timestamp >= committedUsers[msg.sender].lastDayBeforeMidnight, "Must be on or after the last day of the commitment");
         // check if user has missed a day or their commitment is over;
         bool hasMissedDay = checkIfUserHasMissedDay(committedUsers[msg.sender]);
         if(hasMissedDay){
             // if user has missed more than 1 day, send off the user's eth
-            committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
-            emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
+            failedCommitment();
         } else {
             // if user has not missed a day, return the user's commitment
-            payable(msg.sender).transfer(committedUsers[msg.sender].atStakeAmount);
-            emit sent(msg.sender, msg.sender, committedUsers[msg.sender].atStakeAmount);
+            successfulCommitment();
         }
         committedUsers[msg.sender].isValid = false;
     }
 
-    function checkIfUserHasMissedDay(Commitment memory commitment) internal pure returns (bool) {
-        return true;
+    function failedCommitment()internal {        // if user has missed more than 1 day, send off the user's eth
+        committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
+        emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
+    }
+
+    function successfulCommitment()internal {
+        committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
+        emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
+    }
+
+    function checkIfUserHasMissedDay(Commitment memory commitment) internal view returns (bool) {
+        if(commitment.lastCheckedDate + 86400 < block.timestamp){
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }
