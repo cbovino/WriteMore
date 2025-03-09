@@ -42,13 +42,14 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
     }
 
     function checkCommitment() public {
-        require(committedUsers[msg.sender].isValid, "Has a valid commitment");
+        require(committedUsers[msg.sender].isValid, "Has an invalid commitment");
         // check if user has missed a day
         if(checkIfUserHasMissedDay(committedUsers[msg.sender])){
             committedUsers[msg.sender].isValid = false;
-            return returnCommitment();
+            return failedCommitment();
         } 
         checkGithub(committedUsers[msg.sender]);
+        return;
     }
     /**
      * @notice Returns the user's commitment based on the outcome of their commitment period
