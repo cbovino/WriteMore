@@ -8,6 +8,7 @@ contract WriteMoreStorage {
      * @notice Stores a user's commitment details
      * @param atStakeAmount Amount of ETH staked by user
      * @param lastDay Timestamp for the final commitment deadline
+     * @param lastCheckedDate Timestamp for the last time the user was checked
      * @param returnReady Whether funds are ready to be distributed
      * @param payoutAccount Address to receive funds if commitment fails
      * @param usersAddress User's address
@@ -16,6 +17,7 @@ contract WriteMoreStorage {
         bool isValid;
         uint256 atStakeAmount;
         uint256 startDate;
+        uint256 lastCheckedDate;
         uint256 lastDayBeforeMidnight;
         address payable payoutAccount;
         string githubUsername;
@@ -41,28 +43,39 @@ contract WriteMoreStorage {
 
     // State variables for Chainlink request
     bytes32 public s_lastRequestId;
+    address public s_lastRequester;
     bytes public s_lastResponse;
     bytes public s_lastError;
 
     // Result of the Chainlink request
     string public result;
 
-    string source = "const d = args[0]"
-    "const apiResponse = await Functions.makeHttpRequest({"
-    "url: 'https://github-commit-checker-178230543349.us-east4.run.app',"
-    "method: 'POST',"
-    "headers: {"
-        "'Content-Type': 'application/json',"
-    "},"
-    "data: {"
-        "'days': args[0],"
-        "'username': args[1]"
+    string source = "const username = args[0];"
+    "const today = new Date();"
+    "const startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();"
+    "let response;"
+    "try {"
+    "    response = await Functions.makeHttpRequest({"
+    "      url: `https://api.github.com/users/${username}/events/public`"
+    "    });"
+    "} catch (err){"
+    "    return Functions.encodeString('Failed Response');"
     "}"
-    "});"
-    "if (apiResponse.error) {"
-    "return Functions.encodeString({'response': 'contact admin'});"
+    "if (!response || response.status !== 200 || !response.data || response.data.length === 0) {"
+    "    return Functions.encodeString('Failed Response');"
     "}"
-    "return Functions.encodeString(apiResponse.data);";
+    "const commitsByDay = new Set();"
+    "for (const event of response.data) {"
+    "    if (event.type === 'PushEvent') {"
+    "        const eventDate = new Date(event.created_at);"
+    "        const dayTimestamp = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();"
+    "        commitsByDay.add(dayTimestamp);"
+    "    }"
+    "}"
+    "if (!commitsByDay.has(startTime)) {"
+    "    return Functions.encodeString('No Commits');"
+    "}"
+    "return Functions.encodeString('Commitment Complete');";
 
 
 }

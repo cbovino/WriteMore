@@ -16,9 +16,9 @@ const config: HardhatUserConfig = {
     sepolia: {
       url: process.env.SEPOLIA_URL,
       accounts: [process.env.PRIVATE_KEY!],
-      chainlinkRouter: process.env.CHAINLINK_ROUTER,
-      donId: process.env.CHAINLINK_DON_ID,
-      subscriptionId: process.env.CHAINLINK_SUBSCRIPTION_ID
+      // router: process.env.CHAINLINK_ROUTER,
+      // donId: process.env.CHAINLINK_DON_ID,
+      // subscriptionId: process.env.CHAINLINK_SUBSCRIPTION_ID
     },
   },
   etherscan: {
