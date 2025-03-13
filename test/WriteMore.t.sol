@@ -23,11 +23,7 @@ contract WriteMoreTest is Test {
         string memory githubUsername = "testuser";
 
         // Make a commitment with 0.02 ETH
-        writeMore.makeCommitment{value: 0.02 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
 
         // Assert that the commitment was made
         (
@@ -45,10 +41,7 @@ contract WriteMoreTest is Test {
         assert(startDate <= block.timestamp);
         assert(lastDayBeforeMidnight == (lastDay - (lastDay % 86400) + 86340)); // Check lastDayBeforeMidnight
         assert(_payoutAccount == payoutAccount);
-        assert(
-            keccak256(abi.encodePacked(_githubUsername)) ==
-                keccak256(abi.encodePacked(githubUsername))
-        );
+        assert(keccak256(abi.encodePacked(_githubUsername)) == keccak256(abi.encodePacked(githubUsername)));
     }
 
     function test_ReturnCommitment() public {
