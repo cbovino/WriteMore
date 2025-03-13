@@ -6,7 +6,11 @@ import "./WriteMoreEvents.sol";
 import "./WriteMoreLink.sol";
 
 contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
-    constructor(address _router, bytes32 _donId, uint64 _subscriptionId) WriteMoreLink(_router) {
+    constructor(
+        address _router,
+        bytes32 _donId,
+        uint64 _subscriptionId
+    ) WriteMoreLink(_router) {
         creator = msg.sender;
         donID = _donId;
         subscriptionId = _subscriptionId;
@@ -23,16 +27,23 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
      *  - First deadline starts as soon as the commitment is made
      *  - At least 1 day between contract creation and first deadline
      */
-    function makeCommitment(uint256 lastDay, address payable payoutAccount, string memory githubUsername)
-        public
-        payable
-    {
-        require(lastDay > block.timestamp, "lastDay cant be before block.timestamp");
+    function makeCommitment(
+        uint256 lastDay,
+        address payable payoutAccount,
+        string memory githubUsername
+    ) public payable {
+        require(
+            lastDay > block.timestamp,
+            "lastDay cant be before block.timestamp"
+        );
         // Calculate the timestamp for 11:59pm on the given lastDay
         uint256 lastDayBeforeMidnight = lastDay - (lastDay % 86400) + 86340; // 86400 seconds in a day, 86340 is 11:59:00
 
-        require(!committedUsers[msg.sender].isValid, "Already has a commitment");
-        require(msg.value > 0.01 ether, "Must stake at least $20 USD worth of ETH");
+        require(
+            !committedUsers[msg.sender].isValid,
+            "Already has a commitment"
+        );
+        require(msg.value > 0.01 ether, "Must stake at least .01 eth");
 
         bool valid = true;
 
@@ -53,7 +64,10 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
     }
 
     function checkCommitment() public {
-        require(committedUsers[msg.sender].isValid, "Has an invalid commitment");
+        require(
+            committedUsers[msg.sender].isValid,
+            "Has an invalid commitment"
+        );
         // check if user has missed a day
         if (checkIfUserHasMissedDay(committedUsers[msg.sender])) {
             committedUsers[msg.sender].isValid = false;
@@ -90,16 +104,30 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
 
     function failedCommitment() internal {
         // if user has missed more than 1 day, send off the user's eth
-        committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
-        emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
+        committedUsers[msg.sender].payoutAccount.transfer(
+            committedUsers[msg.sender].atStakeAmount
+        );
+        emit sent(
+            msg.sender,
+            committedUsers[msg.sender].payoutAccount,
+            committedUsers[msg.sender].atStakeAmount
+        );
     }
 
     function successfulCommitment() internal {
-        committedUsers[msg.sender].payoutAccount.transfer(committedUsers[msg.sender].atStakeAmount);
-        emit sent(msg.sender, committedUsers[msg.sender].payoutAccount, committedUsers[msg.sender].atStakeAmount);
+        committedUsers[msg.sender].payoutAccount.transfer(
+            committedUsers[msg.sender].atStakeAmount
+        );
+        emit sent(
+            msg.sender,
+            committedUsers[msg.sender].payoutAccount,
+            committedUsers[msg.sender].atStakeAmount
+        );
     }
 
-    function checkIfUserHasMissedDay(Commitment memory commitment) internal view returns (bool) {
+    function checkIfUserHasMissedDay(
+        Commitment memory commitment
+    ) internal view returns (bool) {
         if (commitment.lastCheckedDate + 86400 < block.timestamp) {
             return true;
         } else {
