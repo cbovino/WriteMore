@@ -25,11 +25,7 @@ contract WriteMoreTest is Test {
         string memory githubUsername = "testuser";
 
         // Make a commitment with 0.02 ETH
-        writeMore.makeCommitment{value: 0.02 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
 
         // Assert that the commitment was made
         (
@@ -47,10 +43,7 @@ contract WriteMoreTest is Test {
         assert(startDate <= block.timestamp);
         assert(lastDayBeforeMidnight == (lastDay - (lastDay % 86400) + 86340)); // Check lastDayBeforeMidnight
         assert(_payoutAccount == payoutAccount);
-        assert(
-            keccak256(abi.encodePacked(_githubUsername)) ==
-                keccak256(abi.encodePacked(githubUsername))
-        );
+        assert(keccak256(abi.encodePacked(_githubUsername)) == keccak256(abi.encodePacked(githubUsername)));
     }
 
     function test_Commitment_Requirement_LastDay() public {
@@ -61,11 +54,7 @@ contract WriteMoreTest is Test {
         string memory githubUsername = "testuser";
         // Expect the transaction to revert
         vm.expectRevert("lastDay cant be before block.timestamp");
-        writeMore.makeCommitment{value: 0.02 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
     }
 
     function test_Commitment_Requirement_AlreadyCommitted() public {
@@ -74,18 +63,10 @@ contract WriteMoreTest is Test {
         address payable payoutAccount = payable(address(0x456));
         string memory githubUsername = "testuser";
 
-        writeMore.makeCommitment{value: 0.02 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
         // Expect the transaction to revert
         vm.expectRevert("Already has a commitment");
-        writeMore.makeCommitment{value: 0.02 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
     }
 
     function test_Commitment_Requirement_MinimumStake() public {
@@ -95,11 +76,7 @@ contract WriteMoreTest is Test {
         string memory githubUsername = "testuser";
         // Expect the transaction to revert
         vm.expectRevert("Must stake at least .01 eth");
-        writeMore.makeCommitment{value: 0.01 ether}(
-            lastDay,
-            payoutAccount,
-            githubUsername
-        );
+        writeMore.makeCommitment{value: 0.01 ether}(lastDay, payoutAccount, githubUsername);
     }
 
     // function test_Commitment_CheckCommitment() public {
