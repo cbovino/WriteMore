@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {WriteMore} from "../src/WriteMore.sol";
+import {WriteMoreStorage} from "../src/WriteMoreStorage.sol";
 
 contract WriteMoreTest is Test {
     WriteMore public writeMore;
@@ -23,9 +24,24 @@ contract WriteMoreTest is Test {
 
         // Make a commitment with 0.02 ETH
         writeMore.makeCommitment{value: 0.02 ether}(lastDay, payoutAccount, githubUsername);
-        
+
         // Assert that the commitment was made
-        // (You would need to implement a way to check the commitment state)
+        (
+            bool isValid,
+            uint256 atStakeAmount,
+            uint256 startDate,
+            uint256 endDate,
+            uint256 lastDayBeforeMidnight,
+            address _payoutAccount,
+            string memory _githubUsername,
+            uint256 commitmentIndex
+        ) = writeMore.committedUsers(address(this));
+        assert(isValid == true);
+        assert(atStakeAmount == 0.02 ether);
+        assert(startDate <= block.timestamp);
+        assert(lastDayBeforeMidnight == (lastDay - (lastDay % 86400) + 86340)); // Check lastDayBeforeMidnight
+        assert(_payoutAccount == payoutAccount);
+        assert(keccak256(abi.encodePacked(_githubUsername)) == keccak256(abi.encodePacked(githubUsername)));
     }
 
     function test_ReturnCommitment() public {
