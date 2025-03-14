@@ -14,6 +14,7 @@ contract WriteMoreStorage {
      */
     struct Commitment {
         bool isValid;
+        bool isCompleted;
         uint256 atStakeAmount;
         uint256 startDate;
         uint256 lastCheckedDate;

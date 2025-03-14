@@ -15,6 +15,7 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
 
     // Custom error type
     error UnexpectedRequestID(bytes32 requestId);
+
     /**
      * @notice Initializes the contract with the Chainlink router address and sets the contract owner
      *  0xb83E47C2bC239B3bf370bc41e1459A34b41238D0
@@ -22,18 +23,11 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
 
     constructor(address _router) FunctionsClient(_router) {}
 
-    function checkGithub(Commitment memory _user) internal {
-        string[] memory args = new string[](1);
-        args[0] = _user.githubUsername;
-        sendRequest(args);
-        return;
-    }
-
     /**
      * @notice Sends an HTTP request for character information
      * @param _args The arguments to pass to the HTTP request
      */
-    function sendRequest(string[] memory _args) internal {
+    function sendRequest(string[] memory _args) internal virtual {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source); // Initialize the request with JS code
         if (_args.length > 0) {
@@ -41,7 +35,12 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
         } // Set the arguments for the request
         // Send the request and store the request ID to state
         s_lastRequester = msg.sender;
-        s_lastRequestId = _sendRequest(req.encodeCBOR(), subscriptionId, gasLimit, donID);
+        s_lastRequestId = _sendRequest(
+            req.encodeCBOR(),
+            subscriptionId,
+            gasLimit,
+            donID
+        );
     }
 
     /**
@@ -50,9 +49,29 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
      * @param response The HTTP response data
      * @param err Any errors from the Functions request
      */
-    function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
+    function fulfillRequest(
+        bytes32 requestId,
+        bytes memory response,
+        bytes memory err
+    ) internal override {
         if (s_lastRequestId != requestId) {
             revert UnexpectedRequestID(requestId); // Check if request IDs match
+        }
+
+        // Check for potential overflow when adding 86400 seconds (1 day)
+        require(
+            committedUsers[s_lastRequester].lastCheckedDate <=
+                type(uint256).max - 86400,
+            "Timestamp overflow detected"
+        );
+
+        bool hasMissedDay = committedUsers[s_lastRequester].lastCheckedDate +
+            86400 <
+            block.timestamp;
+
+        if (hasMissedDay) {
+            committedUsers[s_lastRequester].isValid = false;
+            return;
         }
         // Update the contract's state variables with the response and any errors
         s_lastResponse = response;
@@ -61,14 +80,48 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
         // if error, emit error and given user benefit of the doubt
         result = string(response);
 
-        if (keccak256(abi.encodePacked(result)) == keccak256(abi.encodePacked("Commitment Complete"))) {
+        if (userCommitPresent(result) || serveFailure(result)) {
             // if user has committed today, reset the lastCheckedDate to the current timestamp
             committedUsers[s_lastRequester].lastCheckedDate = block.timestamp;
-        } else if (keccak256(abi.encodePacked(result)) == keccak256(abi.encodePacked("Failed Response"))) {
-            committedUsers[s_lastRequester].lastCheckedDate = block.timestamp;
-            emit Error(s_lastRequester, "Failed Response- User given benefit of the doubt", s_lastResponse, s_lastError);
+
+            if (isLastDay(s_lastRequester)) {
+                committedUsers[s_lastRequester].isCompleted = true;
+            }
+            emit Response(
+                requestId,
+                result,
+                s_lastResponse,
+                s_lastRequester,
+                s_lastError,
+                committedUsers[s_lastRequester].isCompleted
+            );
         }
-        // Emit an event to log the response
-        emit Response(requestId, result, s_lastResponse, s_lastError);
+        if (missedDay(s_lastRequester)) {
+            committedUsers[s_lastRequester].isValid = false;
+        }
+    }
+
+    function userCommitPresent(
+        string memory result
+    ) internal pure returns (bool) {
+        return
+            keccak256(abi.encodePacked(result)) ==
+            keccak256(abi.encodePacked("Commitment Complete"));
+    }
+
+    function serveFailure(string memory result) internal pure returns (bool) {
+        return
+            keccak256(abi.encodePacked(result)) ==
+            keccak256(abi.encodePacked("Failed Response"));
+    }
+
+    function isLastDay(address _user) internal view returns (bool) {
+        return
+            block.timestamp >
+            (committedUsers[_user].lastDayBeforeMidnight - 86400);
+    }
+
+    function missedDay(address _user) internal view returns (bool) {
+        return committedUsers[_user].lastCheckedDate + 86400 < block.timestamp;
     }
 }
