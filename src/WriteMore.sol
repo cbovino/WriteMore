@@ -44,7 +44,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
 
         // Calculate the timestamp for 11:59 PM on the given lastDay
         uint256 lastDayBeforeMidnight = lastDay - (lastDay % 86400) + 86340; // 86400 seconds in a day, 86340 is 11:59:00
-        
+
         require(
             lastDayBeforeMidnight > block.timestamp,
             "Last day must be after current timestamp"
@@ -65,7 +65,12 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
         );
         allCommitments.push(committedUsers[msg.sender]);
 
-        emit committed(msg.sender, msg.value, block.timestamp);
+        emit committed(
+            msg.sender,
+            msg.value,
+            block.timestamp,
+            lastDayBeforeMidnight
+        );
     }
 
     function checkCommitment() public {
@@ -119,7 +124,7 @@ contract WriteMore is WriteMoreStorage, WriteMoreEvents, WriteMoreLink {
 
     function successfulCommitment() internal {
         require(
-            committedUsers[msg.sender].atStakeAmount > 0,
+            address(this).balance >= committedUsers[msg.sender].atStakeAmount,
             "No funds to transfer"
         );
         payable(msg.sender).transfer(committedUsers[msg.sender].atStakeAmount);

@@ -65,11 +65,15 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
             "Timestamp overflow detected"
         );
 
-        bool hasMissedDay = committedUsers[s_lastRequester].lastCheckedDate +
-            86400 <
-            block.timestamp;
+        // Check if the user has missed a day by comparing the current timestamp
+        // with the last checked date. If the difference is 86400 seconds (1 day) or more,
+        // it indicates that the user has missed at least one day.
+        bool hasMissedDay = (block.timestamp -
+            committedUsers[s_lastRequester].lastCheckedDate) > 86400;
 
-        if (hasMissedDay) {
+        if (
+            hasMissedDay && committedUsers[s_lastRequester].lastCheckedDate != 0
+        ) {
             committedUsers[s_lastRequester].isValid = false;
             return;
         }
@@ -95,8 +99,7 @@ contract WriteMoreLink is FunctionsClient, WriteMoreStorage, WriteMoreEvents {
                 s_lastError,
                 committedUsers[s_lastRequester].isCompleted
             );
-        }
-        if (missedDay(s_lastRequester)) {
+        } else if (missedDay(s_lastRequester)) {
             committedUsers[s_lastRequester].isValid = false;
         }
     }

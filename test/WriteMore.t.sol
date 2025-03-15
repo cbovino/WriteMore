@@ -71,7 +71,7 @@ contract WriteMoreTest is Test {
             uint256 lastDayBeforeMidnight,
             address _payoutAccount,
             string memory _githubUsername,
-            uint256 commitmentIndex
+
         ) = writeMore.committedUsers(address(this));
         assert(isValid == true);
         assert(isCompleted == false);
@@ -152,35 +152,46 @@ contract WriteMoreTest is Test {
         writeMore.checkCommitment();
     }
 
-    // function test_ReturnCommitment() public {
-    //     // Set up a commitment first
-    //     uint256 lastDay = vm.getBlockTimestamp() + 86300;
-    //     address payable payoutAccount = payable(address(0x456));
-    //     string memory githubUsername = "testuser1";
+    function test_ReturnCommitment() public {
+        address EOA = address(0x123); // Fake EOA
+        deal(EOA, 10 ether); // Set balance
+        vm.startPrank(EOA); // Give 1 ether & impersonate EOA
 
-    //     // Make a commitment with 0.02 ETH
-    //     writeMore.makeCommitment{value: 0.02 ether}(
-    //         lastDay,
-    //         payoutAccount,
-    //         githubUsername
-    //     );
+        // last day is march 5th
+        uint256 lastDay = vm.getBlockTimestamp() + 86300;
+        address payable payoutAccount = payable(address(0x456));
+        string memory githubUsername = "testuser1";
 
-    //     // Check the initial balance of the committer
-    //     uint256 initialBalance = address(this).balance;
+        // Make a commitment with 0.02 ETH
+        writeMore.makeCommitment{value: 0.02 ether}(
+            lastDay,
+            payoutAccount,
+            githubUsername
+        );
 
-    //     writeMore.checkCommitment();
+        // Check the initial balance of the committer
+        uint256 initialBalance = address(EOA).balance;
 
-    //     // Simulate returning the commitment
-    //     vm.warp(lastDay + 86400);
+        // check commitment for today march 4th
+        writeMore.checkCommitment();
 
-    //     writeMore.checkCommitment();
+        // warp to march 5th
+        vm.warp(vm.getBlockTimestamp() + 86400);
 
-    //     writeMore.returnCommitment();
+        // check commitment for today march 5th
+        writeMore.checkCommitment();
 
-    //     // Check the balance after returning the commitment
-    //     uint256 finalBalance = address(this).balance;
+        // warp to march 6th
+        vm.warp(vm.getBlockTimestamp() + 86400);
 
-    //     // Assert that the balance has increased by the amount staked
-    //     assert(finalBalance == (initialBalance + 0.02 ether));
-    // }
+        // return the commitment
+        writeMore.returnCommitment();
+
+        // Check the balance after returning the commitment
+        uint256 finalBalance = address(EOA).balance;
+
+        // Assert that the balance has increased by the amount staked
+        assert(finalBalance == (initialBalance + 0.02 ether));
+        vm.stopPrank();
+    }
 }
